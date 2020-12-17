@@ -72,6 +72,7 @@ func RunDeschedulerStrategies(ctx context.Context, rs *options.DeschedulerServer
 	strategyFuncs := map[string]strategyFunction{
 		"RemoveDuplicates":                            strategies.RemoveDuplicatePods,
 		"LowNodeUtilization":                          strategies.LowNodeUtilization,
+		"LowNodeActualUtilization":                    strategies.LowNodeActualUtilization,
 		"RemovePodsViolatingInterPodAntiAffinity":     strategies.RemovePodsViolatingInterPodAntiAffinity,
 		"RemovePodsViolatingNodeAffinity":             strategies.RemovePodsViolatingNodeAffinity,
 		"RemovePodsViolatingNodeTaints":               strategies.RemovePodsViolatingNodeTaints,
