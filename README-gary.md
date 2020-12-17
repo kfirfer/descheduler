@@ -1,0 +1,1 @@
+CGO_ENABLED=0 go run  sigs.k8s.io/descheduler/cmd/descheduler --policy-config-file examples/develop.yaml --kubeconfig /tmp/admin.conf
