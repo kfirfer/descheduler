@@ -14,4 +14,5 @@ require (
 	k8s.io/component-base v0.20.0
 	k8s.io/component-helpers v0.20.0
 	k8s.io/klog/v2 v2.4.0
+	k8s.io/metrics v0.19.5
 )
