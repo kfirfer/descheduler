@@ -27,7 +27,8 @@ type DeschedulerPolicy struct {
 	metav1.TypeMeta `json:",inline"`
 
 	// Strategies
-	Strategies StrategyList `json:"strategies,omitempty"`
+	// Strategies StrategyList `json:"strategies,omitempty"`
+	Strategies StrategyList `json:"strategies"`
 
 	// NodeSelector for a set of nodes to operate over
 	NodeSelector *string `json:"nodeSelector,omitempty"`
@@ -63,7 +64,8 @@ type Namespaces struct {
 // Besides Namespaces ThresholdPriority and ThresholdPriorityClassName only one of its members may be specified
 type StrategyParameters struct {
 	NodeResourceUtilizationThresholds *NodeResourceUtilizationThresholds `json:"nodeResourceUtilizationThresholds,omitempty"`
-	NodeResourceActualUtilizationThresholds *NodeResourceActualUtilizationThresholds `json:"NodeResourceActualUtilizationThresholds,omitempty"`
+	// NodeResourceActualUtilizationThresholds *NodeResourceActualUtilizationThresholds `json:"NodeResourceActualUtilizationThresholds,omitempty`
+	NodeResourceActualUtilizationThresholds *NodeResourceActualUtilizationThresholds `json:"NodeResourceActualUtilizationThresholds`
 	NodeAffinityType                  []string                           `json:"nodeAffinityType,omitempty"`
 	PodsHavingTooManyRestarts         *PodsHavingTooManyRestarts         `json:"podsHavingTooManyRestarts,omitempty"`
 	PodLifeTime                       *PodLifeTime                       `json:"podLifeTime,omitempty"`

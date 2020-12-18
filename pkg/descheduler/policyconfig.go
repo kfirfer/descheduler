@@ -17,6 +17,8 @@ limitations under the License.
 package descheduler
 
 import (
+	"bytes"
+	"encoding/json"
 	"fmt"
 	"io/ioutil"
 
@@ -38,6 +40,8 @@ func LoadPolicyConfig(policyConfigFile string) (*api.DeschedulerPolicy, error) {
 	if err != nil {
 		return nil, fmt.Errorf("failed to read policy config file %q: %+v", policyConfigFile, err)
 	}
+	// gary
+	//fmt.Println(string(policy))
 
 	versionedPolicy := &v1alpha1.DeschedulerPolicy{}
 
@@ -45,6 +49,12 @@ func LoadPolicyConfig(policyConfigFile string) (*api.DeschedulerPolicy, error) {
 	if err := runtime.DecodeInto(decoder, policy, versionedPolicy); err != nil {
 		return nil, fmt.Errorf("failed decoding descheduler's policy config %q: %v", policyConfigFile, err)
 	}
+
+	// gary
+	data, _ := json.Marshal(versionedPolicy)
+	var out bytes.Buffer
+	json.Indent(&out, data, "", "\t")
+	fmt.Printf("%v=%v\n", "versionedPolicy", out.String())
 
 	internalPolicy := &api.DeschedulerPolicy{}
 	if err := scheme.Scheme.Convert(versionedPolicy, internalPolicy, nil); err != nil {
