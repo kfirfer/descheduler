@@ -63,6 +63,7 @@ type Namespaces struct {
 // Besides Namespaces ThresholdPriority and ThresholdPriorityClassName only one of its members may be specified
 type StrategyParameters struct {
 	NodeResourceUtilizationThresholds *NodeResourceUtilizationThresholds `json:"nodeResourceUtilizationThresholds,omitempty"`
+	NodeResourceActualUtilizationThresholds *NodeResourceActualUtilizationThresholds `json:"NodeResourceActualUtilizationThresholds,omitempty"`
 	NodeAffinityType                  []string                           `json:"nodeAffinityType,omitempty"`
 	PodsHavingTooManyRestarts         *PodsHavingTooManyRestarts         `json:"podsHavingTooManyRestarts,omitempty"`
 	PodLifeTime                       *PodLifeTime                       `json:"podLifeTime,omitempty"`
@@ -80,7 +81,11 @@ type NodeResourceUtilizationThresholds struct {
 	TargetThresholds ResourceThresholds `json:"targetThresholds,omitempty"`
 	NumberOfNodes    int                `json:"numberOfNodes,omitempty"`
 }
-
+type NodeResourceActualUtilizationThresholds struct {
+	Thresholds       ResourceThresholds `json:"thresholds,omitempty"`
+	TargetThresholds ResourceThresholds `json:"targetThresholds,omitempty"`
+	NumberOfNodes    int                `json:"numberOfNodes,omitempty"`
+}
 type PodsHavingTooManyRestarts struct {
 	PodRestartThreshold     int32 `json:"podRestartThreshold,omitempty"`
 	IncludingInitContainers bool  `json:"includingInitContainers,omitempty"`

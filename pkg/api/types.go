@@ -65,6 +65,7 @@ type Namespaces struct {
 //  once the policy version is bumped to v1alpha2
 type StrategyParameters struct {
 	NodeResourceUtilizationThresholds *NodeResourceUtilizationThresholds
+	NodeResourceActualUtilizationThresholds *NodeResourceActualUtilizationThresholds
 	NodeAffinityType                  []string
 	PodsHavingTooManyRestarts         *PodsHavingTooManyRestarts
 	PodLifeTime                       *PodLifeTime
@@ -78,6 +79,11 @@ type Percentage float64
 type ResourceThresholds map[v1.ResourceName]Percentage
 
 type NodeResourceUtilizationThresholds struct {
+	Thresholds       ResourceThresholds
+	TargetThresholds ResourceThresholds
+	NumberOfNodes    int
+}
+type NodeResourceActualUtilizationThresholds struct {
 	Thresholds       ResourceThresholds
 	TargetThresholds ResourceThresholds
 	NumberOfNodes    int

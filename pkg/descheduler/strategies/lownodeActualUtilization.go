@@ -39,8 +39,9 @@ import (
 // to calculate nodes' utilization and not the actual resource usage.
 func LowNodeActualUtilization(ctx context.Context, client clientset.Interface, strategy api.DeschedulerStrategy, nodes []*v1.Node, podEvictor *evictions.PodEvictor) {
 	// TODO: May be create a struct for the strategy as well, so that we don't have to pass along the all the params?
-	fmt.Println("test=====================================")
-	if err := validateLowNodeUtilizationParams(strategy.Params); err != nil {
+	// gary
+	fmt.Println("lownodeactualutilization.go func LowNodeActualUtilization=====================================")
+	if err := validateLowNodeActualUtilizationParams(strategy.Params); err != nil {
 		klog.ErrorS(err, "Invalid LowNodeUtilization parameters")
 		return
 	}
@@ -51,8 +52,8 @@ func LowNodeActualUtilization(ctx context.Context, client clientset.Interface, s
 		return
 	}
 
-	thresholds := strategy.Params.NodeResourceUtilizationThresholds.Thresholds
-	targetThresholds := strategy.Params.NodeResourceUtilizationThresholds.TargetThresholds
+	thresholds := strategy.Params.NodeResourceActualUtilizationThresholds.Thresholds
+	targetThresholds := strategy.Params.NodeResourceActualUtilizationThresholds.TargetThresholds
 	if err := validateStrategyConfig(thresholds, targetThresholds); err != nil {
 		klog.ErrorS(err, "LowNodeUtilization config is not valid")
 		return
@@ -95,8 +96,8 @@ func LowNodeActualUtilization(ctx context.Context, client clientset.Interface, s
 	}
 	klog.V(1).InfoS("Total number of underutilized nodes", "totalNumber", len(lowNodes))
 
-	if len(lowNodes) < strategy.Params.NodeResourceUtilizationThresholds.NumberOfNodes {
-		klog.V(1).InfoS("Number of nodes underutilized is less than NumberOfNodes, nothing to do here", "underutilizedNodes", len(lowNodes), "numberOfNodes", strategy.Params.NodeResourceUtilizationThresholds.NumberOfNodes)
+	if len(lowNodes) < strategy.Params.NodeResourceActualUtilizationThresholds.NumberOfNodes {
+		klog.V(1).InfoS("Number of nodes underutilized is less than NumberOfNodes, nothing to do here", "underutilizedNodes", len(lowNodes), "numberOfNodes", strategy.Params.NodeResourceActualUtilizationThresholds.NumberOfNodes)
 		return
 	}
 
@@ -124,6 +125,17 @@ func LowNodeActualUtilization(ctx context.Context, client clientset.Interface, s
 		evictable.IsEvictable)
 
 	klog.V(1).InfoS("Total number of pods evicted", "evictedPods", podEvictor.TotalEvicted())
+}
+
+func validateLowNodeActualUtilizationParams(params *api.StrategyParameters) error {
+	if params == nil || params.NodeResourceActualUtilizationThresholds == nil {
+		return fmt.Errorf("NodeResourceActualUtilizationThresholds not set")
+	}
+	if params.ThresholdPriority != nil && params.ThresholdPriorityClassName != "" {
+		return fmt.Errorf("only one of thresholdPriority and thresholdPriorityClassName can be set")
+	}
+
+	return nil
 }
 
 func getNodeActualUsage(

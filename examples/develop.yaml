@@ -5,25 +5,25 @@ strategies:
       enabled: true
   "RemovePodsViolatingInterPodAntiAffinity":
       enabled: true
-  # "LowNodeUtilization":
-  #     enabled: false
-  #     params:
-  #       nodeResourceUtilizationThresholds:
-  #         thresholds:
-  #           "cpu" : 20
-  #           "memory": 20
-  #           "pods": 20
-  #         targetThresholds:
-  #           "cpu" : 50
-  #           "memory": 50
-  #           "pods": 50
-  "LowNodeActualUtilization":
-      enabled: true
+  "LowNodeUtilization":
+      enabled: false
       params:
         nodeResourceUtilizationThresholds:
           thresholds:
             "cpu" : 20
             "memory": 20
+            "pods": 20
           targetThresholds:
             "cpu" : 50
             "memory": 50
+            "pods": 50
+  "LowNodeActualUtilization":
+      enabled: true
+      params:
+        nodeResourceActualUtilizationThresholds:
+          thresholds:
+            "cpu" : 22
+            "memory": 23
+          targetThresholds:
+            "cpu" : 52
+            "memory": 53
