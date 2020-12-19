@@ -7,6 +7,7 @@ import (
 	"k8s.io/client-go/tools/clientcmd"
 
 	metricsv "k8s.io/metrics/pkg/client/clientset/versioned"
+
 )
 
 func CreateMetricsClient(kubeconfig string) (*metricsv.Clientset, error) {

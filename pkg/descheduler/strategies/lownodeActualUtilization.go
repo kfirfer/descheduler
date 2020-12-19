@@ -26,20 +26,21 @@ import (
 	"k8s.io/klog/v2"
 
 	"sigs.k8s.io/descheduler/pkg/api"
-	"sigs.k8s.io/descheduler/pkg/descheduler/client"
 	"sigs.k8s.io/descheduler/pkg/descheduler/evictions"
 	nodeutil "sigs.k8s.io/descheduler/pkg/descheduler/node"
 	podutil "sigs.k8s.io/descheduler/pkg/descheduler/pod"
 	"sigs.k8s.io/descheduler/pkg/utils"
 
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+
+	metricsv "k8s.io/metrics/pkg/client/clientset/versioned"
 )
 
 // LowNodeUtilization evicts pods from overutilized nodes to underutilized nodes. Note that CPU/Memory requests are used
-// to calculate nodes' utilization and not the actual resource usage.
-func LowNodeActualUtilization(ctx context.Context, client clientset.Interface, strategy api.DeschedulerStrategy, nodes []*v1.Node, podEvictor *evictions.PodEvictor) {
+// to calculate nodes' actual utilization.
+func LowNodeActualUtilization(ctx context.Context, client clientset.Interface, strategy api.DeschedulerStrategy, nodes []*v1.Node, podEvictor *evictions.PodEvictor, metricsClient metricsv.Interface) {
 	// TODO: May be create a struct for the strategy as well, so that we don't have to pass along the all the params?
-	// gary
+	// garydebug
 	fmt.Println("lownodeactualutilization.go func LowNodeActualUtilization=====================================")
 	if err := validateLowNodeActualUtilizationParams(strategy.Params); err != nil {
 		klog.ErrorS(err, "Invalid LowNodeUtilization parameters")
@@ -72,8 +73,8 @@ func LowNodeActualUtilization(ctx context.Context, client clientset.Interface, s
 		targetThresholds[v1.ResourceMemory] = MaxResourcePercentage
 	}
 
-	lowNodes, targetNodes := classifyNodes(
-		getNodeUsage(ctx, client, nodes, thresholds, targetThresholds),
+	lowNodes, targetNodes := classifyNodes1(
+		getNodeActualUsage(ctx, client, nodes, thresholds, targetThresholds, metricsClient),
 		// The node has to be schedulable (to be able to move workload there)
 		func(node *v1.Node, usage NodeUsage) bool {
 			if nodeutil.IsNodeUnschedulable(node) {
@@ -138,11 +139,34 @@ func validateLowNodeActualUtilizationParams(params *api.StrategyParameters) erro
 	return nil
 }
 
+// classifyNodes classifies the nodes into low-utilization or high-utilization nodes. If a node lies between
+// low and high thresholds, it is simply ignored.
+func classifyNodes1(
+	nodeUsages []NodeUsage,
+	lowThresholdFilter, highThresholdFilter func(node *v1.Node, usage NodeUsage) bool,
+) ([]NodeUsage, []NodeUsage) {
+	lowNodes, highNodes := []NodeUsage{}, []NodeUsage{}
+
+	for _, nodeUsage := range nodeUsages {
+		if lowThresholdFilter(nodeUsage.node, nodeUsage) {
+			klog.V(2).InfoS("Node is underutilized", "node", klog.KObj(nodeUsage.node), "usage", nodeUsage.usage, "usagePercentage", resourceUsagePercentages(nodeUsage))
+			lowNodes = append(lowNodes, nodeUsage)
+		} else if highThresholdFilter(nodeUsage.node, nodeUsage) {
+			klog.V(2).InfoS("Node is overutilized", "node", klog.KObj(nodeUsage.node), "usage", nodeUsage.usage, "usagePercentage", resourceUsagePercentages(nodeUsage))
+			highNodes = append(highNodes, nodeUsage)
+		} else {
+			klog.V(2).InfoS("Node is appropriately utilized", "node", klog.KObj(nodeUsage.node), "usage", nodeUsage.usage, "usagePercentage", resourceUsagePercentages(nodeUsage))
+		}
+	}
+
+	return lowNodes, highNodes
+}
+
 func getNodeActualUsage(
 	ctx context.Context,
 	client clientset.Interface,
 	nodes []*v1.Node,
-	lowThreshold, highThreshold api.ResourceThresholds,
+	lowThreshold, highThreshold api.ResourceThresholds, metricsClient metricsv.Interface,
 ) []NodeUsage {
 	nodeUsageList := []NodeUsage{}
 
@@ -160,7 +184,7 @@ func getNodeActualUsage(
 
 		nodeUsageList = append(nodeUsageList, NodeUsage{
 			node:    node,
-			usage:   nodeActualUtilization(node),
+			usage:   nodeActualUtilization(node, metricsClient),
 			allPods: pods,
 			// A threshold is in percentages but in <0;100> interval.
 			// Performing `threshold * 0.01` will convert <0;100> interval into <0;1>.
@@ -182,13 +206,14 @@ func getNodeActualUsage(
 }
 
 // The main differrence with lownodeutilization.go
-func nodeActualUtilization(node *v1.Node) map[v1.ResourceName]*resource.Quantity {
-	metricsClient, err := client.CreateMetricsClient("/tmp/apiVersi.conf")
+func nodeActualUtilization(node *v1.Node, metricsClient metricsv.Interface) map[v1.ResourceName]*resource.Quantity {
+	// metricsClient, err := client.CreateMetricsClient("/tmp/apiVersi.conf")
+
+	nodename := node.GetName()
+	nodeMetrics, err := metricsClient.MetricsV1beta1().NodeMetricses().Get(context.TODO(), nodename, metav1.GetOptions{})
 	if err != nil {
 		panic(err.Error())
 	}
-	nodename := node.GetName()
-	nodeMetrics, err := metricsClient.MetricsV1beta1().NodeMetricses().Get(context.TODO(), nodename, metav1.GetOptions{})
 	usage := nodeMetrics.Usage
 
 	totalReqs := map[v1.ResourceName]*resource.Quantity{

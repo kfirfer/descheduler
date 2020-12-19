@@ -13,8 +13,8 @@ strategies:
             "cpu" : 22
             "memory": 23
           targetThresholds:
-            "cpu" : 52
-            "memory": 53
+            "cpu" : 92
+            "memory": 93
   # "LowNodeUtilization":
   #     enabled: false
   #     params:

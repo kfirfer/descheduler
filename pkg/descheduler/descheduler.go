@@ -70,9 +70,9 @@ func RunDeschedulerStrategies(ctx context.Context, rs *options.DeschedulerServer
 	sharedInformerFactory.WaitForCacheSync(stopChannel)
 
 	strategyFuncs := map[string]strategyFunction{
-		"RemoveDuplicates":                            strategies.RemoveDuplicatePods,
-		"LowNodeUtilization":                          strategies.LowNodeUtilization,
-		"LowNodeActualUtilization":                    strategies.LowNodeActualUtilization,
+		"RemoveDuplicates":   strategies.RemoveDuplicatePods,
+		"LowNodeUtilization": strategies.LowNodeUtilization,
+		// "LowNodeActualUtilization":                    strategies.LowNodeActualUtilization,
 		"RemovePodsViolatingInterPodAntiAffinity":     strategies.RemovePodsViolatingInterPodAntiAffinity,
 		"RemovePodsViolatingNodeAffinity":             strategies.RemovePodsViolatingNodeAffinity,
 		"RemovePodsViolatingNodeTaints":               strategies.RemovePodsViolatingNodeTaints,
@@ -118,7 +118,15 @@ func RunDeschedulerStrategies(ctx context.Context, rs *options.DeschedulerServer
 			nodes,
 			evictLocalStoragePods,
 		)
-
+		// LowNodeActualUtilization
+		if strategy := deschedulerPolicy.Strategies[api.StrategyName("LowNodeActualUtilization")]; strategy.Enabled {
+			metricsClient, err := client.CreateMetricsClient(rs.KubeconfigFile)
+			if err != nil {
+				klog.Errorln(err)
+				klog.Exitln("unable to connect to metrics-server")
+			}
+			strategies.LowNodeActualUtilization(ctx, rs.Client, strategy, nodes, podEvictor, metricsClient)
+		}
 		for name, f := range strategyFuncs {
 			if strategy := deschedulerPolicy.Strategies[api.StrategyName(name)]; strategy.Enabled {
 				f(ctx, rs.Client, strategy, nodes, podEvictor)
