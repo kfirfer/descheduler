@@ -17,8 +17,11 @@ limitations under the License.
 package strategies
 
 import (
+	"bytes"
 	"context"
+	"encoding/json"
 	"fmt"
+	"sort"
 
 	v1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/resource"
@@ -36,7 +39,7 @@ import (
 	metricsv "k8s.io/metrics/pkg/client/clientset/versioned"
 )
 
-// LowNodeUtilization evicts pods from overutilized nodes to underutilized nodes. Note that CPU/Memory requests are used
+// LowNodeActualUtilization evicts pods from overutilized nodes to underutilized nodes. Note that CPU/Memory requests are used
 // to calculate nodes' actual utilization.
 func LowNodeActualUtilization(ctx context.Context, client clientset.Interface, strategy api.DeschedulerStrategy, nodes []*v1.Node, podEvictor *evictions.PodEvictor, metricsClient metricsv.Interface) {
 	// TODO: May be create a struct for the strategy as well, so that we don't have to pass along the all the params?
@@ -55,7 +58,7 @@ func LowNodeActualUtilization(ctx context.Context, client clientset.Interface, s
 
 	thresholds := strategy.Params.NodeResourceActualUtilizationThresholds.Thresholds
 	targetThresholds := strategy.Params.NodeResourceActualUtilizationThresholds.TargetThresholds
-	if err := validateStrategyConfig(thresholds, targetThresholds); err != nil {
+	if err := validateStrategyConfig1(thresholds, targetThresholds); err != nil {
 		klog.ErrorS(err, "LowNodeUtilization config is not valid")
 		return
 	}
@@ -84,7 +87,7 @@ func LowNodeActualUtilization(ctx context.Context, client clientset.Interface, s
 			return isNodeWithLowUtilization(usage)
 		},
 		func(node *v1.Node, usage NodeUsage) bool {
-			return isNodeAboveTargetUtilization(usage)
+			return isNodeAboveTargetActualUtilization(usage)
 		},
 	)
 
@@ -117,13 +120,13 @@ func LowNodeActualUtilization(ctx context.Context, client clientset.Interface, s
 
 	klog.V(1).InfoS("Number of nodes above target utilization", "totalNumber", len(targetNodes))
 	evictable := podEvictor.Evictable(evictions.WithPriorityThreshold(thresholdPriority))
-
-	evictPodsFromTargetNodes(
+	evictPodsFromTargetNodes1(
 		ctx,
 		targetNodes,
 		lowNodes,
 		podEvictor,
-		evictable.IsEvictable)
+		evictable.IsEvictable,
+		metricsClient)
 
 	klog.V(1).InfoS("Total number of pods evicted", "evictedPods", podEvictor.TotalEvicted())
 }
@@ -136,6 +139,30 @@ func validateLowNodeActualUtilizationParams(params *api.StrategyParameters) erro
 		return fmt.Errorf("only one of thresholdPriority and thresholdPriorityClassName can be set")
 	}
 
+	return nil
+}
+
+// validateStrategyConfig checks if the strategy's config is valid
+func validateStrategyConfig1(thresholds, targetThresholds api.ResourceThresholds) error {
+	// validate thresholds and targetThresholds config
+	if err := validateThresholds(thresholds); err != nil {
+		return fmt.Errorf("thresholds config is not valid: %v", err)
+	}
+	if err := validateThresholds(targetThresholds); err != nil {
+		return fmt.Errorf("targetThresholds config is not valid: %v", err)
+	}
+
+	// validate if thresholds and targetThresholds have same resources configured
+	if len(thresholds) != len(targetThresholds) {
+		return fmt.Errorf("thresholds and targetThresholds configured different resources")
+	}
+	for resourceName, value := range thresholds {
+		if targetValue, ok := targetThresholds[resourceName]; !ok {
+			return fmt.Errorf("thresholds and targetThresholds configured different resources")
+		} else if value > targetValue {
+			return fmt.Errorf("thresholds' %v percentage is greater than targetThresholds'", resourceName)
+		}
+	}
 	return nil
 }
 
@@ -184,7 +211,7 @@ func getNodeActualUsage(
 
 		nodeUsageList = append(nodeUsageList, NodeUsage{
 			node:    node,
-			usage:   nodeActualUtilization(node, metricsClient),
+			usage:   nodeActualUtilization(node, pods, metricsClient),
 			allPods: pods,
 			// A threshold is in percentages but in <0;100> interval.
 			// Performing `threshold * 0.01` will convert <0;100> interval into <0;1>.
@@ -206,9 +233,8 @@ func getNodeActualUsage(
 }
 
 // The main differrence with lownodeutilization.go
-func nodeActualUtilization(node *v1.Node, metricsClient metricsv.Interface) map[v1.ResourceName]*resource.Quantity {
+func nodeActualUtilization(node *v1.Node, pods []*v1.Pod, metricsClient metricsv.Interface) map[v1.ResourceName]*resource.Quantity {
 	// metricsClient, err := client.CreateMetricsClient("/tmp/apiVersi.conf")
-
 	nodename := node.GetName()
 	nodeMetrics, err := metricsClient.MetricsV1beta1().NodeMetricses().Get(context.TODO(), nodename, metav1.GetOptions{})
 	if err != nil {
@@ -219,6 +245,7 @@ func nodeActualUtilization(node *v1.Node, metricsClient metricsv.Interface) map[
 	totalReqs := map[v1.ResourceName]*resource.Quantity{
 		v1.ResourceCPU:    resource.NewMilliQuantity(0, resource.DecimalSI),
 		v1.ResourceMemory: resource.NewQuantity(0, resource.BinarySI),
+		v1.ResourcePods:   resource.NewQuantity(int64(len(pods)), resource.DecimalSI),
 	}
 	for name, quantity := range usage {
 		if name == v1.ResourceCPU || name == v1.ResourceMemory {
@@ -227,5 +254,174 @@ func nodeActualUtilization(node *v1.Node, metricsClient metricsv.Interface) map[
 			totalReqs[name].Add(quantity)
 		}
 	}
+	klog.V(1).InfoS("Get node actual usage from metrics-server", "node", nodename)
 	return totalReqs
+}
+
+// evictPodsFromTargetNodes evicts pods based on priority, if all the pods on the node have priority, if not
+// evicts them based on QoS as fallback option.
+// TODO: @ravig Break this function into smaller functions.
+func evictPodsFromTargetNodes1(
+	ctx context.Context,
+	targetNodes, lowNodes []NodeUsage,
+	podEvictor *evictions.PodEvictor,
+	podFilter func(pod *v1.Pod) bool,
+	metricsClient metricsv.Interface,
+) {
+	sortNodesByUsage1(targetNodes)
+
+	// upper bound on total number of pods/cpu/memory to be moved
+	totalAvailableUsage := map[v1.ResourceName]*resource.Quantity{
+		v1.ResourcePods:   {},
+		v1.ResourceCPU:    {},
+		v1.ResourceMemory: {},
+	}
+
+	var taintsOfLowNodes = make(map[string][]v1.Taint, len(lowNodes))
+	for _, node := range lowNodes {
+		taintsOfLowNodes[node.node.Name] = node.node.Spec.Taints
+
+		for name := range totalAvailableUsage {
+			totalAvailableUsage[name].Add(*node.highResourceThreshold[name])
+			totalAvailableUsage[name].Sub(*node.usage[name])
+		}
+	}
+
+	klog.V(1).InfoS(
+		"Total capacity to be moved",
+		"CPU", totalAvailableUsage[v1.ResourceCPU].MilliValue(),
+		"Mem", totalAvailableUsage[v1.ResourceMemory].Value(),
+		"Pods", totalAvailableUsage[v1.ResourcePods].Value(),
+	)
+
+	for _, node := range targetNodes {
+		klog.V(3).InfoS("Evicting pods from node", "node", klog.KObj(node.node), "usage", node.usage)
+
+		nonRemovablePods, removablePods := classifyPods1(node.allPods, podFilter)
+		klog.V(2).InfoS("Pods on node", "node", klog.KObj(node.node), "allPods", len(node.allPods), "nonRemovablePods", len(nonRemovablePods), "removablePods", len(removablePods))
+
+		if len(removablePods) == 0 {
+			klog.V(1).InfoS("No removable pods on node, try next node", "node", klog.KObj(node.node))
+			continue
+		}
+
+		klog.V(1).InfoS("Evicting pods based on priority, if they have same priority, they'll be evicted based on QoS tiers")
+		// sort the evictable Pods based on priority. This also sorts them based on QoS. If there are multiple pods with same priority, they are sorted based on QoS tiers.
+		podutil.SortPodsBasedOnPriorityLowToHigh(removablePods)
+		evictPods1(ctx, removablePods, node, totalAvailableUsage, taintsOfLowNodes, podEvictor, metricsClient)
+		klog.V(1).InfoS("Evicted pods from node", "node", klog.KObj(node.node), "evictedPods", podEvictor.NodeEvicted(node.node), "usage", node.usage)
+	}
+}
+func evictPods1(
+	ctx context.Context,
+	inputPods []*v1.Pod,
+	nodeUsage NodeUsage,
+	totalAvailableUsage map[v1.ResourceName]*resource.Quantity,
+	taintsOfLowNodes map[string][]v1.Taint,
+	podEvictor *evictions.PodEvictor,
+	metricsClient metricsv.Interface,
+) {
+	// stop if node utilization drops below target threshold or any of required capacity (cpu, memory, pods) is moved
+	continueCond := func() bool {
+		if !isNodeAboveTargetActualUtilization(nodeUsage) {
+			return false
+		}
+		if totalAvailableUsage[v1.ResourcePods].CmpInt64(0) < 1 {
+			return false
+		}
+		if totalAvailableUsage[v1.ResourceCPU].CmpInt64(0) < 1 {
+			return false
+		}
+		if totalAvailableUsage[v1.ResourceMemory].CmpInt64(0) < 1 {
+			return false
+		}
+		return true
+	}
+
+	if continueCond() {
+		for _, pod := range inputPods {
+			if !utils.PodToleratesTaints(pod, taintsOfLowNodes) {
+				klog.V(3).InfoS("Skipping eviction for pod, doesn't tolerate node taint", "pod", klog.KObj(pod))
+
+				continue
+			}
+
+			success, err := podEvictor.EvictPod(ctx, pod, nodeUsage.node, "LowNodeActualUtilization")
+			if err != nil {
+				klog.ErrorS(err, "Error evicting pod", "pod", klog.KObj(pod))
+				break
+			}
+
+			if success {
+				klog.V(3).InfoS("Evicted pods", "pod", klog.KObj(pod), "err", err)
+
+				// cpuQuantity := utils.GetResourceRequestQuantity(pod, v1.ResourceCPU)
+				cpuQuantity := utils.GetResourceActualQuantity(pod, v1.ResourceCPU, metricsClient)
+				nodeUsage.usage[v1.ResourceCPU].Sub(cpuQuantity)
+				totalAvailableUsage[v1.ResourceCPU].Sub(cpuQuantity)
+
+				// memoryQuantity := utils.GetResourceRequestQuantity(pod, v1.ResourceMemory)
+				memoryQuantity := utils.GetResourceActualQuantity(pod, v1.ResourceMemory, metricsClient)
+				nodeUsage.usage[v1.ResourceMemory].Sub(memoryQuantity)
+				totalAvailableUsage[v1.ResourceMemory].Sub(memoryQuantity)
+
+				nodeUsage.usage[v1.ResourcePods].Sub(*resource.NewQuantity(1, resource.DecimalSI))
+				totalAvailableUsage[v1.ResourcePods].Sub(*resource.NewQuantity(1, resource.DecimalSI))
+
+				klog.V(3).InfoS("Updated node usage", "updatedUsage", nodeUsage)
+				// check if node utilization drops below target threshold or any required capacity (cpu, memory, pods) is moved
+				if !continueCond() {
+					break
+				}
+			}
+		}
+	}
+}
+
+// isNodeAboveTargetActualUtilization checks if a node is overutilized
+// At least one resource has to be above the high threshold
+func isNodeAboveTargetActualUtilization(usage NodeUsage) bool {
+	for name, nodeValue := range usage.usage {
+		// usage.highResourceThreshold[name] < nodeValue
+		if usage.highResourceThreshold[name].Cmp(*nodeValue) == -1 {
+			return true
+		}
+	}
+	return false
+}
+
+func classifyPods1(pods []*v1.Pod, filter func(pod *v1.Pod) bool) ([]*v1.Pod, []*v1.Pod) {
+	var nonRemovablePods, removablePods []*v1.Pod
+
+	for _, pod := range pods {
+		if !filter(pod) {
+			nonRemovablePods = append(nonRemovablePods, pod)
+		} else {
+			removablePods = append(removablePods, pod)
+		}
+	}
+
+	return nonRemovablePods, removablePods
+}
+
+// sortNodesByUsage sorts nodes based on usage in descending order
+func sortNodesByUsage1(nodes []NodeUsage) {
+
+	sort.Slice(nodes, func(i, j int) bool {
+		fmt.Println("===================1")
+		fmt.Println(nodes[i].usage[v1.ResourceMemory].Value())
+		fmt.Println(nodes[i].usage[v1.ResourceCPU].MilliValue())
+		fmt.Println(nodes[i].usage[v1.ResourcePods].Value())
+		fmt.Println("===================2")
+		ti := nodes[i].usage[v1.ResourceMemory].Value() + nodes[i].usage[v1.ResourceCPU].MilliValue() + nodes[i].usage[v1.ResourcePods].Value()
+		tj := nodes[j].usage[v1.ResourceMemory].Value() + nodes[j].usage[v1.ResourceCPU].MilliValue() + nodes[j].usage[v1.ResourcePods].Value()
+		// To return sorted in descending order
+		return ti > tj
+	})
+}
+func garydebug(raw interface{}) {
+	data, _ := json.Marshal(raw)
+	var out bytes.Buffer
+	json.Indent(&out, data, "", "\t")
+	fmt.Printf("array=%v\n", out.String())
 }
