@@ -348,6 +348,8 @@ func evictPods1(
 			cpuQuantity := utils.GetResourceActualQuantity(pod, v1.ResourceCPU, metricsClient)
 			memoryQuantity := utils.GetResourceActualQuantity(pod, v1.ResourceMemory, metricsClient)
 
+			klog.V(3).InfoS("Pod Actual Resource Quantity", "pod", klog.KObj(pod), "CPU", cpuQuantity.String(), "Memory", memoryQuantity.String(), "CPU(m)", cpuQuantity.MilliValue(), "Memory(Mi)", memoryQuantity.Value()/1024/1024)
+
 			success, err := podEvictor.EvictPod(ctx, pod, nodeUsage.node, "LowNodeActualUtilization")
 			if err != nil {
 				klog.ErrorS(err, "Error evicting pod", "pod", klog.KObj(pod))

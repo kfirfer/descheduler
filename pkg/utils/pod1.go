@@ -7,7 +7,6 @@ import (
 	v1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/klog/v2"
 
 	metricsv "k8s.io/metrics/pkg/client/clientset/versioned"
 )
@@ -43,12 +42,6 @@ func GetResourceActualQuantity(pod *v1.Pod, resourceName v1.ResourceName, metric
 			fmt.Println("Error GetResourceActualQuantity")
 		}
 	}
-	switch resourceName {
-	case v1.ResourceCPU:
-		klog.V(3).InfoS("Pod Actual Resource Quantity(m)", "pod", klog.KObj(pod), resourceName, actualQuantity.MilliValue())
-	case v1.ResourceMemory, v1.ResourceStorage, v1.ResourceEphemeralStorage:
-		klog.V(3).InfoS("Pod Actual Resource Quantity(Kilobyte)", "pod", klog.KObj(pod), resourceName, actualQuantity.Value())
-	}
-	
+
 	return actualQuantity
 }

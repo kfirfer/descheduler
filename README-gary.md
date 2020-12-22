@@ -23,6 +23,7 @@ CGO_ENABLED=0 go run  sigs.k8s.io/descheduler/cmd/descheduler --policy-config-fi
 ## 参考
 0. origin
 https://github.com/kubernetes-sigs/descheduler
+https://blog.csdn.net/xiashanrenlaozhang/article/details/92413091
 1. KEP
 https://docs.google.com/document/d/1ffBpzhqELmhqJxdGMzYzIOoigxn3J0zlP1_nie34f9s/edit#heading=h.defm38wxvjp1
 https://github.com/kubernetes-sigs/scheduler-plugins/tree/master/kep/61-Trimaran-real-load-aware-scheduling
