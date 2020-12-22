@@ -308,6 +308,10 @@ func evictPodsFromTargetNodes1(
 		klog.V(1).InfoS("Evicting pods based on priority, if they have same priority, they'll be evicted based on QoS tiers")
 		// sort the evictable Pods based on priority. This also sorts them based on QoS. If there are multiple pods with same priority, they are sorted based on QoS tiers.
 		podutil.SortPodsBasedOnPriorityLowToHigh(removablePods)
+		for i := 0; i < len(removablePods); i++ {
+			pod := removablePods[i]
+			klog.V(3).InfoS("PodsBasedOnPriorityLowToHigh", "order", i, "node", klog.KObj(node.node), "namespace", pod.GetNamespace(), "pod", pod.GetName())
+		}
 		evictPods1(ctx, removablePods, node, totalAvailableUsage, taintsOfLowNodes, podEvictor, metricsClient)
 		klog.V(1).InfoS("Evicted pods from node", "node", klog.KObj(node.node), "evictedPods", podEvictor.NodeEvicted(node.node), "usage", node.usage)
 	}
