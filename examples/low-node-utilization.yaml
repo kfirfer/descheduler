@@ -1,0 +1,13 @@
+apiVersion: "descheduler/v1alpha1"
+kind: "DeschedulerPolicy"
+strategies:
+  "LowNodeActualUtilization":
+      enabled: true
+      params:
+        nodeResourceActualUtilizationThresholds:
+          thresholds:
+            "cpu" : 30
+            "memory": 30
+          targetThresholds:
+            "cpu" : 70
+            "memory": 70

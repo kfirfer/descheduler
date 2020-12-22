@@ -121,6 +121,12 @@ func RunDeschedulerStrategies(ctx context.Context, rs *options.DeschedulerServer
 			nodes,
 			evictLocalStoragePods,
 		)
+		
+		for name, f := range strategyFuncs {
+			if strategy := deschedulerPolicy.Strategies[api.StrategyName(name)]; strategy.Enabled {
+				f(ctx, rs.Client, strategy, nodes, podEvictor)
+			}
+		}
 		// LowNodeActualUtilization
 		if strategy := deschedulerPolicy.Strategies[api.StrategyName("LowNodeActualUtilization")]; strategy.Enabled {
 			metricsClient, err := client.CreateMetricsClient(rs.KubeconfigFile)
@@ -129,11 +135,6 @@ func RunDeschedulerStrategies(ctx context.Context, rs *options.DeschedulerServer
 				klog.Exitln("unable to connect to metrics-server")
 			}
 			strategies.LowNodeActualUtilization(ctx, rs.Client, strategy, nodes, podEvictor, metricsClient)
-		}
-		for name, f := range strategyFuncs {
-			if strategy := deschedulerPolicy.Strategies[api.StrategyName(name)]; strategy.Enabled {
-				f(ctx, rs.Client, strategy, nodes, podEvictor)
-			}
 		}
 
 		// If there was no interval specified, send a signal to the stopChannel to end the wait.Until loop after 1 iteration
