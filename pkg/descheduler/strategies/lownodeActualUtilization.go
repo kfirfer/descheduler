@@ -326,9 +326,9 @@ func evictPods1(
 		if !isNodeAboveTargetActualUtilization(nodeUsage) {
 			return false
 		}
-		if totalAvailableUsage[v1.ResourcePods].CmpInt64(0) < 1 {
-			return false
-		}
+		// if totalAvailableUsage[v1.ResourcePods].CmpInt64(0) < 1 {
+		// 	return false
+		// }
 		if totalAvailableUsage[v1.ResourceCPU].CmpInt64(0) < 1 {
 			return false
 		}
@@ -345,6 +345,8 @@ func evictPods1(
 
 				continue
 			}
+			cpuQuantity := utils.GetResourceActualQuantity(pod, v1.ResourceCPU, metricsClient)
+			memoryQuantity := utils.GetResourceActualQuantity(pod, v1.ResourceMemory, metricsClient)
 
 			success, err := podEvictor.EvictPod(ctx, pod, nodeUsage.node, "LowNodeActualUtilization")
 			if err != nil {
@@ -356,12 +358,10 @@ func evictPods1(
 				klog.V(3).InfoS("Evicted pods", "pod", klog.KObj(pod), "err", err)
 
 				// cpuQuantity := utils.GetResourceRequestQuantity(pod, v1.ResourceCPU)
-				cpuQuantity := utils.GetResourceActualQuantity(pod, v1.ResourceCPU, metricsClient)
 				nodeUsage.usage[v1.ResourceCPU].Sub(cpuQuantity)
 				totalAvailableUsage[v1.ResourceCPU].Sub(cpuQuantity)
 
 				// memoryQuantity := utils.GetResourceRequestQuantity(pod, v1.ResourceMemory)
-				memoryQuantity := utils.GetResourceActualQuantity(pod, v1.ResourceMemory, metricsClient)
 				nodeUsage.usage[v1.ResourceMemory].Sub(memoryQuantity)
 				totalAvailableUsage[v1.ResourceMemory].Sub(memoryQuantity)
 
@@ -408,11 +408,6 @@ func classifyPods1(pods []*v1.Pod, filter func(pod *v1.Pod) bool) ([]*v1.Pod, []
 func sortNodesByUsage1(nodes []NodeUsage) {
 
 	sort.Slice(nodes, func(i, j int) bool {
-		fmt.Println("===================1")
-		fmt.Println(nodes[i].usage[v1.ResourceMemory].Value())
-		fmt.Println(nodes[i].usage[v1.ResourceCPU].MilliValue())
-		fmt.Println(nodes[i].usage[v1.ResourcePods].Value())
-		fmt.Println("===================2")
 		ti := nodes[i].usage[v1.ResourceMemory].Value() + nodes[i].usage[v1.ResourceCPU].MilliValue() + nodes[i].usage[v1.ResourcePods].Value()
 		tj := nodes[j].usage[v1.ResourceMemory].Value() + nodes[j].usage[v1.ResourceCPU].MilliValue() + nodes[j].usage[v1.ResourcePods].Value()
 		// To return sorted in descending order

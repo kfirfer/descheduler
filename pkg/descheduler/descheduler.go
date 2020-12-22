@@ -92,6 +92,9 @@ func RunDeschedulerStrategies(ctx context.Context, rs *options.DeschedulerServer
 	}
 
 	maxNoOfPodsToEvictPerNode := rs.MaxNoOfPodsToEvictPerNode
+	// set default value 2
+	maxNoOfPodsToEvictPerNode = 2
+	fmt.Printf("Debug maxNoOfPodsToEvictPerNode=%d\n", maxNoOfPodsToEvictPerNode)
 	if deschedulerPolicy.MaxNoOfPodsToEvictPerNode != nil {
 		maxNoOfPodsToEvictPerNode = *deschedulerPolicy.MaxNoOfPodsToEvictPerNode
 	}

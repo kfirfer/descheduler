@@ -3,4 +3,4 @@ _tmp/
 vendordiff.patch
 .idea/
 *.code-workspace
-examples/develop.yaml
+examples/test.yaml
