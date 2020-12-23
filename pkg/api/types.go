@@ -87,6 +87,7 @@ type NodeResourceActualUtilizationThresholds struct {
 	Thresholds       ResourceThresholds
 	TargetThresholds ResourceThresholds
 	NumberOfNodes    int
+	ExcludeOwnerKinds []string
 }
 
 type PodsHavingTooManyRestarts struct {

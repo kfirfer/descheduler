@@ -4,6 +4,9 @@ strategies:
   "LowNodeActualUtilization":
       enabled: true
       params:
+        excludeOwnerKinds:
+        - "Cronjob"
+        - "Job"
         nodeResourceActualUtilizationThresholds:
           thresholds:
             "cpu" : 30

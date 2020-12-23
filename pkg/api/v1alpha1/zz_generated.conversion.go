@@ -204,6 +204,7 @@ func autoConvert_v1alpha1_NodeResourceActualUtilizationThresholds_To_api_NodeRes
 	out.Thresholds = *(*api.ResourceThresholds)(unsafe.Pointer(&in.Thresholds))
 	out.TargetThresholds = *(*api.ResourceThresholds)(unsafe.Pointer(&in.TargetThresholds))
 	out.NumberOfNodes = in.NumberOfNodes
+	out.ExcludeOwnerKinds = *(*[]string)(unsafe.Pointer(&in.ExcludeOwnerKinds))
 	return nil
 }
 
@@ -216,6 +217,7 @@ func autoConvert_api_NodeResourceActualUtilizationThresholds_To_v1alpha1_NodeRes
 	out.Thresholds = *(*ResourceThresholds)(unsafe.Pointer(&in.Thresholds))
 	out.TargetThresholds = *(*ResourceThresholds)(unsafe.Pointer(&in.TargetThresholds))
 	out.NumberOfNodes = in.NumberOfNodes
+	out.ExcludeOwnerKinds = *(*[]string)(unsafe.Pointer(&in.ExcludeOwnerKinds))
 	return nil
 }
 

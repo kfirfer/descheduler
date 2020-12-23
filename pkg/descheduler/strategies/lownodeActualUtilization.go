@@ -25,6 +25,7 @@ import (
 
 	v1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/resource"
+	"k8s.io/apimachinery/pkg/util/sets"
 	clientset "k8s.io/client-go/kubernetes"
 	"k8s.io/klog/v2"
 
@@ -126,7 +127,8 @@ func LowNodeActualUtilization(ctx context.Context, client clientset.Interface, s
 		lowNodes,
 		podEvictor,
 		evictable.IsEvictable,
-		metricsClient)
+		metricsClient,
+		strategy)
 
 	klog.V(1).InfoS("Total number of pods evicted", "evictedPods", podEvictor.TotalEvicted())
 }
@@ -267,6 +269,7 @@ func evictPodsFromTargetNodes1(
 	podEvictor *evictions.PodEvictor,
 	podFilter func(pod *v1.Pod) bool,
 	metricsClient metricsv.Interface,
+	strategy api.DeschedulerStrategy,
 ) {
 	sortNodesByUsage1(targetNodes)
 
@@ -297,7 +300,7 @@ func evictPodsFromTargetNodes1(
 	for _, node := range targetNodes {
 		klog.V(3).InfoS("Evicting pods from node", "node", klog.KObj(node.node), "usage", node.usage)
 
-		nonRemovablePods, removablePods := classifyPods1(node.allPods, podFilter)
+		nonRemovablePods, removablePods := classifyPods1(node.allPods, podFilter, strategy)
 		klog.V(2).InfoS("Pods on node", "node", klog.KObj(node.node), "allPods", len(node.allPods), "nonRemovablePods", len(nonRemovablePods), "removablePods", len(removablePods))
 
 		if len(removablePods) == 0 {
@@ -400,11 +403,14 @@ func isNodeAboveTargetActualUtilization(usage NodeUsage) bool {
 	return false
 }
 
-func classifyPods1(pods []*v1.Pod, filter func(pod *v1.Pod) bool) ([]*v1.Pod, []*v1.Pod) {
+func classifyPods1(pods []*v1.Pod, filter func(pod *v1.Pod) bool, strategy api.DeschedulerStrategy) ([]*v1.Pod, []*v1.Pod) {
 	var nonRemovablePods, removablePods []*v1.Pod
 
 	for _, pod := range pods {
+		// ownerRefs := podutil.OwnerRef(pod)
 		if !filter(pod) {
+			nonRemovablePods = append(nonRemovablePods, pod)
+		} else if hasExcludedOwnerRefKind1(podutil.OwnerRef(pod), strategy) {
 			nonRemovablePods = append(nonRemovablePods, pod)
 		} else {
 			removablePods = append(removablePods, pod)
@@ -424,9 +430,24 @@ func sortNodesByUsage1(nodes []NodeUsage) {
 		return ti > tj
 	})
 }
-func garydebug(raw interface{}) {
+
+func hasExcludedOwnerRefKind1(ownerRefs []metav1.OwnerReference, strategy api.DeschedulerStrategy) bool {
+	if strategy.Params == nil || strategy.Params.NodeResourceActualUtilizationThresholds == nil {
+		return false
+	}
+	exclude := sets.NewString(strategy.Params.NodeResourceActualUtilizationThresholds.ExcludeOwnerKinds...)
+	for _, owner := range ownerRefs {
+		klog.V(3).InfoS("Pod Kind", "Kind", owner.Kind, "Pod", owner.Name)
+		if exclude.Has(owner.Kind) {
+			return true
+		}
+	}
+	return false
+}
+
+func garydebug(name string, raw interface{}) {
 	data, _ := json.Marshal(raw)
 	var out bytes.Buffer
 	json.Indent(&out, data, "", "\t")
-	fmt.Printf("array=%v\n", out.String())
+	fmt.Printf("%v=%v\n", name, out.String())
 }

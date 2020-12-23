@@ -135,6 +135,11 @@ func (in *NodeResourceActualUtilizationThresholds) DeepCopyInto(out *NodeResourc
 			(*out)[key] = val
 		}
 	}
+	if in.ExcludeOwnerKinds != nil {
+		in, out := &in.ExcludeOwnerKinds, &out.ExcludeOwnerKinds
+		*out = make([]string, len(*in))
+		copy(*out, *in)
+	}
 	return
 }
 

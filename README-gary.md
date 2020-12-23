@@ -11,7 +11,7 @@ CGO_ENABLED=0 go run  sigs.k8s.io/descheduler/cmd/descheduler --policy-config-fi
 ./pkg/api/types.go
 ./pkg/api/v1alpha1/types.go
 2. 执行 make gen
-    1. 生成的内部和外部类型之间转换的函数代码会被放置在${GOPATH}/src/sigs.k8s.io/descheduler目录下
+    1. 生成的内部和外部类型之间转换的函数代码会被放置在${GOPATH}/src/sigs.k8s.io/descheduler/pkg目录下
     2. 注意对比生成新的代码与旧的差异
     3. pkg/api/v1alpha1/zz_generated.conversion.go
     ```go
@@ -20,6 +20,17 @@ CGO_ENABLED=0 go run  sigs.k8s.io/descheduler/cmd/descheduler --policy-config-fi
         return autoConvert_componentconfig_DeschedulerConfiguration_To_v1alpha1_DeschedulerConfiguration(in, out, s)
     }
     ```
+    4. 自动生成的文件
+```
+./pkg/api/v1alpha1/zz_generated.conversion.go // 不必要的更改
+./pkg/api/v1alpha1/zz_generated.deepcopy.go // 必要的更改
+./pkg/api/v1alpha1/zz_generated.defaults.go  // 必要的更改
+./pkg/api/zz_generated.deepcopy.go  // 必要的更改
+./pkg/apis/componentconfig/v1alpha1/zz_generated.conversion.go
+./pkg/apis/componentconfig/v1alpha1/zz_generated.deepcopy.go
+./pkg/apis/componentconfig/v1alpha1/zz_generated.defaults.go // 不必要的更改
+./pkg/apis/componentconfig/zz_generated.deepcopy.go
+```
 ## 参考文件
 0. origin
 https://github.com/kubernetes-sigs/descheduler
@@ -66,9 +77,15 @@ kubectl create -f cronjob/cronjob.yaml
 3. targetNode上优先级第2低的Pod被立刻执行Terminating和启动一个新的Pod
 4. 直到targetNode的资源小于thresholds或者 underNode（targetThresholds-thresholds）可分配资源为0.
 
-### 定制化最稳定策略
-- 策略
+### 定制化最简单的最稳定性策略
+- 禁止terminating某些pod
+    1. 设置优先级
+
+- 稳定性策略
     1. 每次每个节点只kill掉一个pod
-    2. 每次只操作一个节点
+    2. 每次只操作一个负载高的节点
+    3. 设置10分钟执行一次
+
 1. 运行job
-2. 获取target使用量最多的
+2. 获取使用资源量最多的node  mostTargetNode
+3. kill 掉 mostTargetNode上优先级最低的node

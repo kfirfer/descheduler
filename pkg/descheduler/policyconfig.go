@@ -39,7 +39,7 @@ func LoadPolicyConfig(policyConfigFile string) (*api.DeschedulerPolicy, error) {
 		return nil, fmt.Errorf("failed to read policy config file %q: %+v", policyConfigFile, err)
 	}
 	// garydebug
-	//fmt.Println(string(policy))
+	// fmt.Println(string(policy))
 
 	versionedPolicy := &v1alpha1.DeschedulerPolicy{}
 
