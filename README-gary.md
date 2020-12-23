@@ -1,4 +1,4 @@
-
+# 开发
 ## 二次开发 
 ### 测试运行
 CGO_ENABLED=0 go run  sigs.k8s.io/descheduler/cmd/descheduler --policy-config-file examples/develop.yaml --kubeconfig /tmp/admin.conf
@@ -20,7 +20,7 @@ CGO_ENABLED=0 go run  sigs.k8s.io/descheduler/cmd/descheduler --policy-config-fi
         return autoConvert_componentconfig_DeschedulerConfiguration_To_v1alpha1_DeschedulerConfiguration(in, out, s)
     }
     ```
-## 参考
+## 参考文件
 0. origin
 https://github.com/kubernetes-sigs/descheduler
 https://blog.csdn.net/xiashanrenlaozhang/article/details/92413091
@@ -33,3 +33,14 @@ https://github.com/kubernetes/metrics
 3. kubernetes
 https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.20/#watch-node-v1-core  
 https://godoc.org/k8s.io/apimachinery/pkg/api/resource#pkg-index
+
+# 使用
+## 生产环境使用
+```bash
+cd kubernetes
+# 创建rbac 和 配置文件configmap
+kubectl create -f base/rbac.yaml
+kubectl create -f base/configmap-new.yaml
+# 创建 cronjob
+kubectl create -f cronjob/cronjob.yaml
+```
