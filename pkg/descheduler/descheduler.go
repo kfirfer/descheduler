@@ -92,13 +92,13 @@ func RunDeschedulerStrategies(ctx context.Context, rs *options.DeschedulerServer
 	}
 
 	maxNoOfPodsToEvictPerNode := rs.MaxNoOfPodsToEvictPerNode
-	// set default value 2
-	maxNoOfPodsToEvictPerNode = 2
-	fmt.Printf("Debug maxNoOfPodsToEvictPerNode=%d\n", maxNoOfPodsToEvictPerNode)
+	// set default value 1
+	maxNoOfPodsToEvictPerNode = 1
 	if deschedulerPolicy.MaxNoOfPodsToEvictPerNode != nil {
 		maxNoOfPodsToEvictPerNode = *deschedulerPolicy.MaxNoOfPodsToEvictPerNode
 	}
-
+	fmt.Printf("Debug maxNoOfPodsToEvictPerNode=%d\n", maxNoOfPodsToEvictPerNode)
+	
 	wait.Until(func() {
 		nodes, err := nodeutil.ReadyNodes(ctx, rs.Client, nodeInformer, nodeSelector)
 		if err != nil {
@@ -121,7 +121,7 @@ func RunDeschedulerStrategies(ctx context.Context, rs *options.DeschedulerServer
 			nodes,
 			evictLocalStoragePods,
 		)
-		
+
 		for name, f := range strategyFuncs {
 			if strategy := deschedulerPolicy.Strategies[api.StrategyName(name)]; strategy.Enabled {
 				f(ctx, rs.Client, strategy, nodes, podEvictor)

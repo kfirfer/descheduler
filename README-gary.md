@@ -56,11 +56,19 @@ kubectl create -f cronjob/cronjob.yaml
     2. 始终保持至少有一个副本是可用状态
     3. 某些job的任务及其重要，Pod不可以被kill掉
 
-- 最稳定的策略
-每次只操作一个节点
-每次只kill掉一个pod
-
 - job
 给job设置优先级
 
 ## 测试案例
+### 简单测试
+1. 运行job
+2. targetNode上优先级最低的Pod被立刻执行Terminating和启动一个新的Pod
+3. targetNode上优先级第2低的Pod被立刻执行Terminating和启动一个新的Pod
+4. 直到targetNode的资源小于thresholds或者 underNode（targetThresholds-thresholds）可分配资源为0.
+
+### 定制化最稳定策略
+- 策略
+    1. 每次每个节点只kill掉一个pod
+    2. 每次只操作一个节点
+1. 运行job
+2. 获取target使用量最多的

@@ -314,6 +314,10 @@ func evictPodsFromTargetNodes1(
 		}
 		evictPods1(ctx, removablePods, node, totalAvailableUsage, taintsOfLowNodes, podEvictor, metricsClient)
 		klog.V(1).InfoS("Evicted pods from node", "node", klog.KObj(node.node), "evictedPods", podEvictor.NodeEvicted(node.node), "usage", node.usage)
+		if true {
+			klog.V(3).InfoS("Operate one targetNode per time...End")
+			break
+		}
 	}
 }
 func evictPods1(

@@ -8,7 +8,7 @@ data:
   policy.yaml: |
     apiVersion: "descheduler/v1alpha1"
     kind: "DeschedulerPolicy"
-    maxNoOfPodsToEvictPerNode: 5 # default 2
+    maxNoOfPodsToEvictPerNode: 1 # default 1
     strategies:
       "RemoveDuplicates":
          enabled: true
