@@ -32,7 +32,7 @@ REGISTRY?=gcr.io/k8s-staging-descheduler
 
 # IMAGE is the image name of descheduler
 IMAGE:=descheduler:$(VERSION)
-
+IMAGE:=724258426085.dkr.ecr.us-east-1.amazonaws.com/descheduler:v1_$(shell date +%s)
 # IMAGE_GCLOUD is the image name of descheduler in the remote registry
 IMAGE_GCLOUD:=$(REGISTRY)/descheduler:$(VERSION)
 
