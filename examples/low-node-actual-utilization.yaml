@@ -1,16 +1,18 @@
 apiVersion: "descheduler/v1alpha1"
 kind: "DeschedulerPolicy"
+maxNoOfPodsToEvictPerNode: 1
 strategies:
   "LowNodeActualUtilization":
       enabled: true
       params:
-        excludeOwnerKinds:
-        - "Cronjob"
-        - "Job"
+        thresholdPriority: 1000
         nodeResourceActualUtilizationThresholds:
+          excludeOwnerKinds:
+          - "Cronjob"
+          - "Job"
           thresholds:
             "cpu" : 30
             "memory": 30
           targetThresholds:
-            "cpu" : 70
-            "memory": 70
+            "cpu" : 60
+            "memory": 60

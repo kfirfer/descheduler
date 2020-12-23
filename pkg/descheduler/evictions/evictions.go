@@ -204,20 +204,20 @@ func (pe *PodEvictor) Evictable(opts ...func(opts *Options)) *evictable {
 func (ev *evictable) IsEvictable(pod *v1.Pod) bool {
 	checkErrs := []error{}
 	if IsCriticalPod(pod) {
-		checkErrs = append(checkErrs, fmt.Errorf("pod is critical"))
+		checkErrs = append(checkErrs, fmt.Errorf("[pod is critical]"))
 	}
 
 	ownerRefList := podutil.OwnerRef(pod)
 	if IsDaemonsetPod(ownerRefList) {
-		checkErrs = append(checkErrs, fmt.Errorf("pod is a DaemonSet pod"))
+		checkErrs = append(checkErrs, fmt.Errorf("[pod is a DaemonSet pod]"))
 	}
 
 	if len(ownerRefList) == 0 {
-		checkErrs = append(checkErrs, fmt.Errorf("pod does not have any ownerrefs"))
+		checkErrs = append(checkErrs, fmt.Errorf("[pod does not have any ownerrefs]"))
 	}
 
 	if IsMirrorPod(pod) {
-		checkErrs = append(checkErrs, fmt.Errorf("pod is a mirror pod"))
+		checkErrs = append(checkErrs, fmt.Errorf("[pod is a mirror pod]"))
 	}
 
 	for _, c := range ev.constraints {
@@ -225,7 +225,9 @@ func (ev *evictable) IsEvictable(pod *v1.Pod) bool {
 			checkErrs = append(checkErrs, err)
 		}
 	}
-
+	if len(checkErrs) > 0 {
+		klog.V(4).InfoS("CannotEvictable", "reason", checkErrs)
+	}
 	if len(checkErrs) > 0 && !HaveEvictAnnotation(pod) {
 		klog.V(4).InfoS("Pod lacks an eviction annotation and fails the following checks", "pod", klog.KObj(pod), "checks", errors.NewAggregate(checkErrs).Error())
 		return false

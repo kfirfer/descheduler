@@ -296,7 +296,8 @@ func evictPodsFromTargetNodes1(
 		"Mem", totalAvailableUsage[v1.ResourceMemory].Value(),
 		"Pods", totalAvailableUsage[v1.ResourcePods].Value(),
 	)
-
+	
+	klog.V(3).InfoS("Pod Excluded Kind", "Kind", sets.NewString(strategy.Params.NodeResourceActualUtilizationThresholds.ExcludeOwnerKinds...))
 	for _, node := range targetNodes {
 		klog.V(3).InfoS("Evicting pods from node", "node", klog.KObj(node.node), "usage", node.usage)
 
@@ -408,9 +409,9 @@ func classifyPods1(pods []*v1.Pod, filter func(pod *v1.Pod) bool, strategy api.D
 
 	for _, pod := range pods {
 		// ownerRefs := podutil.OwnerRef(pod)
-		if !filter(pod) {
+		if hasExcludedOwnerRefKind1(podutil.OwnerRef(pod), strategy) {
 			nonRemovablePods = append(nonRemovablePods, pod)
-		} else if hasExcludedOwnerRefKind1(podutil.OwnerRef(pod), strategy) {
+		} else if !filter(pod) {
 			nonRemovablePods = append(nonRemovablePods, pod)
 		} else {
 			removablePods = append(removablePods, pod)
@@ -437,7 +438,7 @@ func hasExcludedOwnerRefKind1(ownerRefs []metav1.OwnerReference, strategy api.De
 	}
 	exclude := sets.NewString(strategy.Params.NodeResourceActualUtilizationThresholds.ExcludeOwnerKinds...)
 	for _, owner := range ownerRefs {
-		klog.V(3).InfoS("Pod Kind", "Kind", owner.Kind, "Pod", owner.Name)
+		klog.V(4).InfoS("Pod Kind", "Kind", owner.Kind, "Pod", owner.Name, "Exclude", exclude)
 		if exclude.Has(owner.Kind) {
 			return true
 		}

@@ -19,9 +19,6 @@ data:
          params:
            thresholdPriority: 1000
            nodeResourceUtilizationThresholds:
-             excludeOwnerKinds:
-             - "Cronjob"
-             - "Job"
              thresholds:
                "cpu" : 20
                "memory": 20
@@ -35,6 +32,9 @@ data:
          params:
            thresholdPriority: 1000
            nodeResourceActualUtilizationThresholds:
+             excludeOwnerKinds:
+             - "Cronjob"
+             - "Job"
              thresholds:
                "cpu" : 30
                "memory": 30
