@@ -44,3 +44,23 @@ kubectl create -f base/configmap-new.yaml
 # 创建 cronjob
 kubectl create -f cronjob/cronjob.yaml
 ```
+
+## 需求
+1. 操作node间的间隔
+2. node内终止pod的间隔
+3. node内终止pod的个数
+4. 禁止终止某些pod
+
+- 需求
+    1. 某些Pod启动缓慢
+    2. 始终保持至少有一个副本是可用状态
+    3. 某些job的任务及其重要，Pod不可以被kill掉
+
+- 最稳定的策略
+每次只操作一个节点
+每次只kill掉一个pod
+
+- job
+给job设置优先级
+
+## 测试案例

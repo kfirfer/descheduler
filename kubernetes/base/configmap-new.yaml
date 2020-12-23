@@ -17,6 +17,7 @@ data:
       "LowNodeUtilization":
          enabled: true
          params:
+           thresholdPriority: 1000
            nodeResourceUtilizationThresholds:
              thresholds:
                "cpu" : 20
@@ -29,6 +30,7 @@ data:
       "LowNodeActualUtilization":
          enabled: true
          params:
+           thresholdPriority: 1000
            nodeResourceActualUtilizationThresholds:
              thresholds:
                "cpu" : 30

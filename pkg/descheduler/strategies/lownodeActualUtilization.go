@@ -310,7 +310,7 @@ func evictPodsFromTargetNodes1(
 		podutil.SortPodsBasedOnPriorityLowToHigh(removablePods)
 		for i := 0; i < len(removablePods); i++ {
 			pod := removablePods[i]
-			klog.V(3).InfoS("PodsBasedOnPriorityLowToHigh", "order", i, "node", klog.KObj(node.node), "namespace", pod.GetNamespace(), "pod", pod.GetName())
+			klog.V(3).InfoS("removablePodsBasedOnPriorityLowToHigh", "order", i, "node", klog.KObj(node.node), "namespace", pod.GetNamespace(), "pod", pod.GetName())
 		}
 		evictPods1(ctx, removablePods, node, totalAvailableUsage, taintsOfLowNodes, podEvictor, metricsClient)
 		klog.V(1).InfoS("Evicted pods from node", "node", klog.KObj(node.node), "evictedPods", podEvictor.NodeEvicted(node.node), "usage", node.usage)
