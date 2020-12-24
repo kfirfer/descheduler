@@ -1,0 +1,41 @@
+evictLocalStoragePods: false
+maxNoOfPodsToEvictPerNode: 1
+strategies:
+  LowNodeActualUtilization:
+    enabled: true
+    params:
+      nodeResourceActualUtilizationThresholds:
+        excludeOwnerKinds:
+          - Cronjob
+          - Job
+          - StatefulSet
+        limitNumberOfTargetNodes: 1
+        targetThresholds:
+          cpu: 80
+          memory: 65
+        thresholds:
+          cpu: 50
+          memory: 50
+  LowNodeUtilization:
+    enabled: false
+    params:
+      nodeResourceUtilizationThresholds:
+        targetThresholds:
+          cpu: 100
+          memory: 90
+          pods: 100
+        thresholds:
+          cpu: 60
+          memory: 60
+          pods: 60
+  RemoveDuplicates:
+    enabled: false
+  RemovePodsViolatingInterPodAntiAffinity:
+    enabled: false
+  RemovePodsViolatingNodeAffinity:
+    enabled: false
+    params:
+      nodeAffinityType:
+        - requiredDuringSchedulingIgnoredDuringExecution
+  RemovePodsViolatingNodeTaints:
+    enabled: false

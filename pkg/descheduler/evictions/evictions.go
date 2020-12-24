@@ -261,7 +261,7 @@ func HaveEvictAnnotation(pod *v1.Pod) bool {
 
 func IsPodWithLocalStorage(pod *v1.Pod) bool {
 	for _, volume := range pod.Spec.Volumes {
-		if volume.HostPath != nil || volume.EmptyDir != nil {
+		if volume.HostPath != nil || volume.EmptyDir != nil || volume.PersistentVolumeClaim != nil {
 			return true
 		}
 	}
