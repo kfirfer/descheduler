@@ -67,3 +67,14 @@ from underutilized to overutilized.
     under utilized frequently or for a short period of time. By default, `numberOfNodes` is set to zero.
     - Called `limitNumberOfTargetNodes`: This  parameter can be configured to operate how many node per time. This can prevent unexpected accidence happen in production enviroment.
     - Called `excludeOwnerKinds`: This parameter can be configuerd to exclude some Kind of Pod.You can configure this parameter if you don't want to evict a runing `job` for resource over utilization of node.
+  
+
+### use in production enviroment
+```bash
+cd kubernetes
+# create rbac and configmap
+kubectl create -f base/rbac.yaml
+kubectl create -f base/configmap-new.yaml
+# create cronjob
+kubectl create -f cronjob/cronjob.yaml
+```

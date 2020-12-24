@@ -85,13 +85,3 @@ https://godoc.org/k8s.io/apimachinery/pkg/api/resource#pkg-index
 1. 运行job
 2. 获取使用资源量最多的targetNode
 3. kill 掉 targetNode上优先级最低的pod
-
-## 生产环境使用
-```bash
-cd kubernetes
-# 创建rbac 和 配置文件configmap
-kubectl create -f base/rbac.yaml
-kubectl create -f base/configmap-new.yaml
-# 创建 cronjob
-kubectl create -f cronjob/cronjob.yaml
-```
