@@ -299,11 +299,6 @@ func evictPodsFromTargetNodes1(
 
 	klog.V(3).InfoS("Kind of Pod is non removable ", "Kind", sets.NewString(strategy.Params.NodeResourceActualUtilizationThresholds.ExcludeOwnerKinds...))
 	for i := 0; i < len(targetNodes); i++ {
-		limitTargetNumber := strategy.Params.NodeResourceActualUtilizationThresholds.LimitNumberOfTargetNodes
-		if i >= limitTargetNumber {
-			klog.V(3).InfoS("Error. Reached maximum number of operating targetNode per time", "limitTargetNumber", limitTargetNumber, "totalTargetNumber", len(targetNodes))
-			break
-		}
 		node := targetNodes[i]
 		klog.V(3).InfoS("Evicting pods from node", "node", klog.KObj(node.node), "usage", node.usage)
 
@@ -323,6 +318,12 @@ func evictPodsFromTargetNodes1(
 			klog.V(3).InfoS("removablePodsBasedOnPriorityLowToHigh", "order", i, "node", klog.KObj(node.node), "namespace", pod.GetNamespace(), "pod", pod.GetName())
 		}
 		evictPods1(ctx, removablePods, node, totalAvailableUsage, taintsOfLowNodes, podEvictor, metricsClient)
+		
+		limitTargetNumber := strategy.Params.NodeResourceActualUtilizationThresholds.LimitNumberOfTargetNodes
+		if i >= limitTargetNumber {
+			klog.V(3).InfoS("Error. Reached maximum number of operating targetNode per time", "limitTargetNumber", limitTargetNumber, "totalTargetNumber", len(targetNodes))
+			break
+		}
 		klog.V(1).InfoS("Evicted pods from node", "node", klog.KObj(node.node), "evictedPods", podEvictor.NodeEvicted(node.node), "usage", node.usage)
 	}
 }
@@ -410,9 +411,13 @@ func classifyPods1(pods []*v1.Pod, filter func(pod *v1.Pod) bool, strategy api.D
 	var nonRemovablePods, removablePods []*v1.Pod
 
 	for _, pod := range pods {
+
 		// ownerRefs := podutil.OwnerRef(pod)
 		if hasExcludedOwnerRefKind1(podutil.OwnerRef(pod), strategy) {
 			nonRemovablePods = append(nonRemovablePods, pod)
+		} else if pod.Status.Phase != "Running" {
+			nonRemovablePods = append(nonRemovablePods, pod)
+			klog.V(4).InfoS("Pod is not running", "pod", pod.GetNamespace(), "status", pod.Status.Phase)
 		} else if !filter(pod) {
 			nonRemovablePods = append(nonRemovablePods, pod)
 		} else {
