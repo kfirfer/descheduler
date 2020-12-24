@@ -298,7 +298,13 @@ func evictPodsFromTargetNodes1(
 	)
 
 	klog.V(3).InfoS("Kind of Pod is non removable ", "Kind", sets.NewString(strategy.Params.NodeResourceActualUtilizationThresholds.ExcludeOwnerKinds...))
-	for _, node := range targetNodes {
+	for i := 0; i < len(targetNodes); i++ {
+		limitTargetNumber := strategy.Params.NodeResourceActualUtilizationThresholds.LimitNumberOfTargetNodes
+		if i >= limitTargetNumber {
+			klog.V(3).InfoS("Error. Reached maximum number of operating targetNode per time", "limitTargetNumber", limitTargetNumber, "totalTargetNumber", len(targetNodes))
+			break
+		}
+		node := targetNodes[i]
 		klog.V(3).InfoS("Evicting pods from node", "node", klog.KObj(node.node), "usage", node.usage)
 
 		nonRemovablePods, removablePods := classifyPods1(node.allPods, podFilter, strategy)
@@ -318,10 +324,6 @@ func evictPodsFromTargetNodes1(
 		}
 		evictPods1(ctx, removablePods, node, totalAvailableUsage, taintsOfLowNodes, podEvictor, metricsClient)
 		klog.V(1).InfoS("Evicted pods from node", "node", klog.KObj(node.node), "evictedPods", podEvictor.NodeEvicted(node.node), "usage", node.usage)
-		if true {
-			klog.V(3).InfoS("Operate one targetNode per time...End")
-			break
-		}
 	}
 }
 func evictPods1(

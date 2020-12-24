@@ -10,7 +10,15 @@ CGO_ENABLED=0 go run  sigs.k8s.io/descheduler/cmd/descheduler --policy-config-fi
 1. 在以下两个文件内都添加相同的struct
 ./pkg/api/types.go
 ./pkg/api/v1alpha1/types.go
+
 2. 执行 make gen
+
+3. 手动替换
+cp ${GOPATH}/src/sigs.k8s.io/descheduler/pkg/api/v1alpha1/zz_generated.deepcopy.go  ./pkg/api/v1alpha1/zz_generated.deepcopy.go
+cp ${GOPATH}/src/sigs.k8s.io/descheduler/pkg/api/v1alpha1/zz_generated.defaults.go  ./pkg/api/v1alpha1/zz_generated.defaults.go
+cp ${GOPATH}/src/sigs.k8s.io/descheduler/pkg/api/zz_generated.deepcopy.go  ./pkg/api/zz_generated.deepcopy.go
+
+- record
     1. 生成的内部和外部类型之间转换的函数代码会被放置在${GOPATH}/src/sigs.k8s.io/descheduler/pkg目录下
     2. 注意对比生成新的代码与旧的差异
     3. pkg/api/v1alpha1/zz_generated.conversion.go
@@ -21,16 +29,16 @@ CGO_ENABLED=0 go run  sigs.k8s.io/descheduler/cmd/descheduler --policy-config-fi
     }
     ```
     4. 自动生成的文件
-```
-./pkg/api/v1alpha1/zz_generated.conversion.go // 不必要的更改
-./pkg/api/v1alpha1/zz_generated.deepcopy.go // 必要的更改
-./pkg/api/v1alpha1/zz_generated.defaults.go  // 必要的更改
-./pkg/api/zz_generated.deepcopy.go  // 必要的更改
-./pkg/apis/componentconfig/v1alpha1/zz_generated.conversion.go
-./pkg/apis/componentconfig/v1alpha1/zz_generated.deepcopy.go
-./pkg/apis/componentconfig/v1alpha1/zz_generated.defaults.go // 不必要的更改
-./pkg/apis/componentconfig/zz_generated.deepcopy.go
-```
+    ```
+    ./pkg/api/v1alpha1/zz_generated.conversion.go // 不必要的更改
+    ./pkg/api/v1alpha1/zz_generated.deepcopy.go // 必要的更改
+    ./pkg/api/v1alpha1/zz_generated.defaults.go  // 必要的更改
+    ./pkg/api/zz_generated.deepcopy.go  // 必要的更改
+    ./pkg/apis/componentconfig/v1alpha1/zz_generated.conversion.go
+    ./pkg/apis/componentconfig/v1alpha1/zz_generated.deepcopy.go
+    ./pkg/apis/componentconfig/v1alpha1/zz_generated.defaults.go // 不必要的更改
+    ./pkg/apis/componentconfig/zz_generated.deepcopy.go
+    ```
 ## 参考文件
 0. origin
 https://github.com/kubernetes-sigs/descheduler
@@ -45,31 +53,19 @@ https://github.com/kubernetes/metrics
 https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.20/#watch-node-v1-core  
 https://godoc.org/k8s.io/apimachinery/pkg/api/resource#pkg-index
 
-# 使用
-## 生产环境使用
-```bash
-cd kubernetes
-# 创建rbac 和 配置文件configmap
-kubectl create -f base/rbac.yaml
-kubectl create -f base/configmap-new.yaml
-# 创建 cronjob
-kubectl create -f cronjob/cronjob.yaml
-```
-
-## 需求
-1. 操作node间的间隔
-2. node内终止pod的间隔
-3. node内终止pod的个数
-4. 禁止终止某些pod
-
-- 需求
+## 背景需求解决措施
+- 背景
     1. 某些Pod启动缓慢
     2. 始终保持至少有一个副本是可用状态
     3. 某些job的任务及其重要，Pod不可以被kill掉
-
-- job
-给job设置优先级
-
+- 需求解决措施
+    1. 操作node的间隔
+        通过配置limitNumberOfTargetNodes设置每次操作资源负载高的节点的数量，设置cronjob间隔时间
+    2. ode内终止pod的个数和node内终止pod的间隔
+        通过配置maxNoOfPodsToEvictPerNode设置每次运行时可以在每个node上进行驱逐终止掉的Pod数量，设置cronjob间隔时间
+    3. 禁止终止某些pod
+        通过配置优先级 thresholdPriority 或者 thresholdPriorityClassName
+        通过配置excludeOwnerKinds排除某些类型的Pod
 ## 测试案例
 ### 简单测试
 1. 运行job
@@ -87,5 +83,78 @@ kubectl create -f cronjob/cronjob.yaml
     3. 设置10分钟执行一次
 
 1. 运行job
-2. 获取使用资源量最多的node  mostTargetNode
-3. kill 掉 mostTargetNode上优先级最低的node
+2. 获取使用资源量最多的targetNode
+3. kill 掉 targetNode上优先级最低的pod
+
+## 生产环境使用
+```bash
+cd kubernetes
+# 创建rbac 和 配置文件configmap
+kubectl create -f base/rbac.yaml
+kubectl create -f base/configmap-new.yaml
+# 创建 cronjob
+kubectl create -f cronjob/cronjob.yaml
+```
+# 讲解 
+### LowNodeUtilization
+
+This strategy finds nodes that are under utilized and evicts pods, if possible, from other nodes
+in the hope that recreation of evicted pods will be scheduled on these underutilized nodes. The
+parameters of this strategy are configured under `nodeResourceUtilizationThresholds`.
+
+The under utilization of nodes is determined by a configurable threshold `thresholds`. The threshold
+`thresholds` can be configured for cpu, memory, and number of pods in terms of percentage. If a node's
+usage is below threshold for all (cpu, memory, and number of pods), the node is considered underutilized.
+Currently, pods request resource requirements are considered for computing node resource utilization.
+
+There is another configurable threshold, `targetThresholds`, that is used to compute those potential nodes
+from where pods could be evicted. If a node's usage is above targetThreshold for any (cpu, memory, or number of pods),
+the node is considered over utilized. Any node between the thresholds, `thresholds` and `targetThresholds` is
+considered appropriately utilized and is not considered for eviction. The threshold, `targetThresholds`,
+can be configured for cpu, memory, and number of pods too in terms of percentage.
+
+These thresholds, `thresholds` and `targetThresholds`, could be tuned as per your cluster requirements.
+
+**Parameters:**
+
+|Name|Type|
+|---|---|
+|`thresholds`|map(string:int)|
+|`targetThresholds`|map(string:int)|
+|`numberOfNodes`|int|
+|`thresholdPriority`|int (see [priority filtering](#priority-filtering))|
+|`thresholdPriorityClassName`|string (see [priority filtering](#priority-filtering))|
+
+**Example:**
+
+```yaml
+apiVersion: "descheduler/v1alpha1"
+kind: "DeschedulerPolicy"
+strategies:
+  "LowNodeUtilization":
+     enabled: true
+     params:
+       nodeResourceUtilizationThresholds:
+         thresholds:
+           "cpu" : 20
+           "memory": 20
+           "pods": 20
+         targetThresholds:
+           "cpu" : 50
+           "memory": 50
+           "pods": 50
+```
+
+Policy should pass the following validation checks:
+* Only three types of resources are supported: `cpu`, `memory` and `pods`.
+* `thresholds` or `targetThresholds` can not be nil and they must configure exactly the same types of resources.
+* The valid range of the resource's percentage value is \[0, 100\]
+* Percentage value of `thresholds` can not be greater than `targetThresholds` for the same resource.
+
+If any of the resource types is not specified, all its thresholds default to 100% to avoid nodes going
+from underutilized to overutilized.
+
+There is another parameter associated with the `LowNodeUtilization` strategy, called `numberOfNodes`.
+This parameter can be configured to activate the strategy only when the number of under utilized nodes
+are above the configured value. This could be helpful in large clusters where a few nodes could go
+under utilized frequently or for a short period of time. By default, `numberOfNodes` is set to zero.

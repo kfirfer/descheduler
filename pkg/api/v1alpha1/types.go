@@ -83,10 +83,11 @@ type NodeResourceUtilizationThresholds struct {
 	NumberOfNodes    int                `json:"numberOfNodes,omitempty"`
 }
 type NodeResourceActualUtilizationThresholds struct {
-	Thresholds        ResourceThresholds `json:"thresholds,omitempty"`
-	TargetThresholds  ResourceThresholds `json:"targetThresholds,omitempty"`
-	NumberOfNodes     int                `json:"numberOfNodes,omitempty"`
-	ExcludeOwnerKinds []string           `json:"excludeOwnerKinds,omitempty"`
+	Thresholds               ResourceThresholds `json:"thresholds,omitempty"`
+	TargetThresholds         ResourceThresholds `json:"targetThresholds,omitempty"`
+	NumberOfNodes            int                `json:"numberOfNodes,omitempty"`
+	ExcludeOwnerKinds        []string           `json:"excludeOwnerKinds,omitempty"`
+	LimitNumberOfTargetNodes int                `json:"limitNumberOfTargetNodes,omitempty"`
 }
 type PodsHavingTooManyRestarts struct {
 	PodRestartThreshold     int32 `json:"podRestartThreshold,omitempty"`

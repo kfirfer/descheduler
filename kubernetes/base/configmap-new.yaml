@@ -32,6 +32,7 @@ data:
          params:
            thresholdPriority: 1000
            nodeResourceActualUtilizationThresholds:
+             limitNumberOfTargetNodes: 1 # default 1
              excludeOwnerKinds:
              - "Cronjob"
              - "Job"

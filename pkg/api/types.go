@@ -64,15 +64,15 @@ type Namespaces struct {
 // TODO(jchaloup): move Namespaces ThresholdPriority and ThresholdPriorityClassName to individual strategies
 //  once the policy version is bumped to v1alpha2
 type StrategyParameters struct {
-	NodeResourceUtilizationThresholds *NodeResourceUtilizationThresholds
+	NodeResourceUtilizationThresholds       *NodeResourceUtilizationThresholds
 	NodeResourceActualUtilizationThresholds *NodeResourceActualUtilizationThresholds
-	NodeAffinityType                  []string
-	PodsHavingTooManyRestarts         *PodsHavingTooManyRestarts
-	PodLifeTime                       *PodLifeTime
-	RemoveDuplicates                  *RemoveDuplicates
-	Namespaces                        *Namespaces
-	ThresholdPriority                 *int32
-	ThresholdPriorityClassName        string
+	NodeAffinityType                        []string
+	PodsHavingTooManyRestarts               *PodsHavingTooManyRestarts
+	PodLifeTime                             *PodLifeTime
+	RemoveDuplicates                        *RemoveDuplicates
+	Namespaces                              *Namespaces
+	ThresholdPriority                       *int32
+	ThresholdPriorityClassName              string
 }
 
 type Percentage float64
@@ -84,10 +84,11 @@ type NodeResourceUtilizationThresholds struct {
 	NumberOfNodes    int
 }
 type NodeResourceActualUtilizationThresholds struct {
-	Thresholds       ResourceThresholds
-	TargetThresholds ResourceThresholds
-	NumberOfNodes    int
-	ExcludeOwnerKinds []string
+	Thresholds               ResourceThresholds
+	TargetThresholds         ResourceThresholds
+	NumberOfNodes            int
+	ExcludeOwnerKinds        []string
+	LimitNumberOfTargetNodes int // How many target nodes does it operate each time/ default 1
 }
 
 type PodsHavingTooManyRestarts struct {
