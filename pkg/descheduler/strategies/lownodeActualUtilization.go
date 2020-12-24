@@ -296,8 +296,8 @@ func evictPodsFromTargetNodes1(
 		"Mem", totalAvailableUsage[v1.ResourceMemory].Value(),
 		"Pods", totalAvailableUsage[v1.ResourcePods].Value(),
 	)
-	
-	klog.V(3).InfoS("Pod Excluded Kind", "Kind", sets.NewString(strategy.Params.NodeResourceActualUtilizationThresholds.ExcludeOwnerKinds...))
+
+	klog.V(3).InfoS("Kind of Pod is non removable ", "Kind", sets.NewString(strategy.Params.NodeResourceActualUtilizationThresholds.ExcludeOwnerKinds...))
 	for _, node := range targetNodes {
 		klog.V(3).InfoS("Evicting pods from node", "node", klog.KObj(node.node), "usage", node.usage)
 
